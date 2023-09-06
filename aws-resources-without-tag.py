@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 import boto3
+from datetime import datetime, timedelta
+
 TAG_NAME="FedoraGroup"
 
 def get_all_regions():
@@ -23,16 +25,19 @@ def get_instance_name(instance_id, region):
             instance_name = tag['Value']
     return instance_name
 
+def older_than_24_hours(timestamp):
+    return timestamp < datetime.now(timestamp.tzinfo) - timedelta(days=1)
+
 def get_untagged_resources(region):
     ec2 = boto3.resource('ec2', region_name=region)
     untagged_instances = []
     untagged_volumes = []
     for instance in ec2.instances.all():
-        if TAG_NAME not in [tag['Key'] for tag in instance.tags or []]:
+        if older_than_24_hours(instance.launch_time) and TAG_NAME not in [tag['Key'] for tag in instance.tags or []]:
             instance_name = get_name_tag(instance.tags)
             untagged_instances.append((instance.id, instance_name))
     for volume in ec2.volumes.all():
-        if TAG_NAME not in [tag['Key'] for tag in volume.tags or []]:
+        if older_than_24_hours(volume.create_time) and TAG_NAME not in [tag['Key'] for tag in volume.tags or []]:
             attachment = volume.attachments[0] if volume.attachments else {}
             attached_instance_id = attachment.get('InstanceId', 'N/A')
             attached_instance_name = get_instance_name(attached_instance_id, region) if attached_instance_id != 'N/A' else 'N/A'
