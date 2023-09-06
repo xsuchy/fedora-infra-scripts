@@ -9,9 +9,9 @@ def get_all_regions():
     regions = [region['RegionName'] for region in client.describe_regions()['Regions']]
     return regions
 
-def get_name_tag(tags):
+def get_tag(tags, value):
     for tag in tags or []:
-        if tag['Key'] == 'Name':
+        if tag['Key'] == value:
             return tag['Value']
     return 'N/A'
 
@@ -34,8 +34,9 @@ def get_untagged_resources(region):
     untagged_volumes = []
     for instance in ec2.instances.all():
         if older_than_24_hours(instance.launch_time) and TAG_NAME not in [tag['Key'] for tag in instance.tags or []]:
-            instance_name = get_name_tag(instance.tags)
-            untagged_instances.append((instance.id, instance_name))
+            instance_name = get_tag(instance.tags, "Name")
+            instance_owner = get_tag(instance.tags, "Owner")
+            untagged_instances.append((instance.id, instance_name, instance_owner))
     for volume in ec2.volumes.all():
         if older_than_24_hours(volume.create_time) and TAG_NAME not in [tag['Key'] for tag in volume.tags or []]:
             attachment = volume.attachments[0] if volume.attachments else {}
@@ -50,9 +51,9 @@ for region in get_all_regions():
     (untagged_instances, untagged_volumes) = get_untagged_resources(region)
     if not untagged_instances and not untagged_volumes:
         continue
-    print("Instances:")
-    for (id, name) in untagged_instances:
-        print(" * {} ({})".format(name, id))
+    print("Instances: (name, id, owner)")
+    for (id, name, owner) in untagged_instances:
+        print(" * {} ({}, {})".format(name, id, owner))
     print("Volumes - [id (attached to instance)]: ")
     for (id, instance_name) in untagged_volumes:
         print(" * {} ({})".format(id, instance_name))
