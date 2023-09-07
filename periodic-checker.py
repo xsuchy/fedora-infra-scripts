@@ -161,10 +161,9 @@ class Analyzer:
 
             if key.lower() == "fedoragroup":
                 if fedora_group != "N/A":
-                    msg = (
-                        "Tag FedoraGroup specified multiple times, changing "
-                        f"from {name_tag} to {value}"
-                    )
+                    msg = "Tag FedoraGroup specified multiple times"
+                    if value != fedora_group:
+                        msg += f", changing from {fedora_group} to {value}"
                     self._error(instance, msg)
                 fedora_group = value
 
