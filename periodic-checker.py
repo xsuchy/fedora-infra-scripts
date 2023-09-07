@@ -179,14 +179,17 @@ class Analyzer:
         instance["script_override_region"] = region
         instance["script_override_name"] = name_tag
         instance["script_override_group"] = fedora_group
+        vcpus = instance['CpuOptions']['CoreCount']
+        memory = self.instance_type_description[instance['InstanceType']]["memory"]
+        instance["script_override_vcpus"] = vcpus
+        instance["script_override_memory"] = memory
 
         if state != "terminated":
             self.owners.add(fedora_group)
             itype = instance['InstanceType']
             self.instance_types.add(itype)
             self.instance_types_per_owner.add(f"{itype}/{fedora_group}")
-            self.vcpus.add(fedora_group, size=instance['CpuOptions']['CoreCount'])
-            memory = self.instance_type_description[instance['InstanceType']]["memory"]
+            self.vcpus.add(fedora_group, size=vcpus)
             self.memory.add(fedora_group, size=memory)
 
     def get_instance_types_info(self, instances, region):
@@ -242,7 +245,9 @@ class Analyzer:
                 output_instance["description"] = (
                     f"Instance owned by '{metadata['script_override_group']}' "
                     f"group, in region '{metadata['script_override_region']}', "
-                    f"with name '{metadata['script_override_name']}'"
+                    f"with name '{metadata['script_override_name']}' ("
+                    f"consumes {metadata['script_override_vcpus']} VCPUs and "
+                    f"{metadata['script_override_memory']}GB memory)"
                 )
 
             file.write(json.dumps(output, indent=4))
