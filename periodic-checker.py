@@ -41,6 +41,18 @@ def describe_regions_with_retry():
         raise  # Raise the exception to trigger a retry
 
 @retry_decorator()
+def describe_instance_types(region_name, instance_types):
+    """
+    Get list of instances in given region
+    """
+    try:
+        ec2_region = boto3.client('ec2', region_name=region_name)
+        return ec2_region.describe_instance_types(InstanceTypes=instance_types)
+    except (BotoCoreError, ClientError) as err:
+        print(f"An error occurred while describing instances in {region_name}: {err}")
+        raise  # Raise the exception to trigger a retry
+
+@retry_decorator()
 def describe_instances_with_retry(region_name):
     """
     Get list of instances in given region
@@ -107,6 +119,7 @@ class Analyzer:
 
         self.owners = Stats("owners")
         self.vcpus = Stats("vcpus")
+        self.memory = Stats("memory")
         self.instance_types = Stats("type")
         self.instance_types_per_owner = Stats("type-per-owner")
         self.errored_instances = {}
@@ -114,6 +127,8 @@ class Analyzer:
         self.log_instance_types_owners = self._get_file_logger("instance-types-per-owner-in-time.log")
         self.log_owners = self._get_file_logger("owners-in-time.log")
         self.log_cpu_usage = self._get_file_logger("vcpu-usage-in-time.log")
+        self.log_mem_usage = self._get_file_logger("memory-usage-in-time.log")
+        self.instance_type_description = {}
 
 
     def _error(self, instance, message):
@@ -172,7 +187,28 @@ class Analyzer:
             self.instance_types.add(itype)
             self.instance_types_per_owner.add(f"{itype}/{fedora_group}")
             self.vcpus.add(fedora_group, size=instance['CpuOptions']['CoreCount'])
+            memory = self.instance_type_description[instance['InstanceType']]["memory"]
+            self.memory.add(fedora_group, size=memory)
 
+    def get_instance_types_info(self, instances, region):
+        instance_types = set()
+        for instance in instances:
+            itype = instance["InstanceType"]
+            if itype in self.instance_type_description:
+                continue
+            instance_types.add(itype)
+
+        if not instance_types:
+            return
+
+        types = list(instance_types)
+        types_info = describe_instance_types(region, types)
+
+        for type_info in types_info["InstanceTypes"]:
+            itype = type_info["InstanceType"]
+            self.instance_type_description[itype] = {
+                "memory": float(type_info["MemoryInfo"]["SizeInMiB"]) / 1024
+            }
 
     def run(self):
         """
@@ -188,6 +224,7 @@ class Analyzer:
         for region in region_names:
             instances = describe_instances_with_retry(region)
             for reservation in instances['Reservations']:
+                self.get_instance_types_info(reservation["Instances"], region)
                 for instance in reservation['Instances']:
                     self.analyze_instance(instance, region)
 
@@ -195,6 +232,7 @@ class Analyzer:
         self.instance_types.print(self.log_instance_types)
         self.instance_types_per_owner.print(self.log_instance_types_owners)
         self.vcpus.print(self.log_cpu_usage)
+        self.memory.print(self.log_mem_usage)
 
         with open(os.path.join(self.resultdir, "last-run-errors.log"), "w", encoding="utf8") as file:
             output = {}
