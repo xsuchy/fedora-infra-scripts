@@ -106,12 +106,14 @@ class Analyzer:
                         resultdir, self.resultdir)
 
         self.owners = Stats("owners")
+        self.vcpus = Stats("vcpus")
         self.instance_types = Stats("type")
         self.instance_types_per_owner = Stats("type-per-owner")
         self.errored_instances = {}
         self.log_instance_types = self._get_file_logger("instance-types-in-time.log")
         self.log_instance_types_owners = self._get_file_logger("instance-types-per-owner-in-time.log")
         self.log_owners = self._get_file_logger("owners-in-time.log")
+        self.log_cpu_usage = self._get_file_logger("vcpu-usage-in-time.log")
 
 
     def _error(self, instance, message):
@@ -169,6 +171,7 @@ class Analyzer:
             itype = instance['InstanceType']
             self.instance_types.add(itype)
             self.instance_types_per_owner.add(f"{itype}/{fedora_group}")
+            self.vcpus.add(fedora_group, size=instance['CpuOptions']['CoreCount'])
 
 
     def run(self):
@@ -191,6 +194,7 @@ class Analyzer:
         self.owners.print(self.log_owners)
         self.instance_types.print(self.log_instance_types)
         self.instance_types_per_owner.print(self.log_instance_types_owners)
+        self.vcpus.print(self.log_cpu_usage)
 
         with open(os.path.join(self.resultdir, "last-run-errors.log"), "w", encoding="utf8") as file:
             output = {}
