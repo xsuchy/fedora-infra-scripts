@@ -43,7 +43,8 @@ def get_untagged_resources(region):
             attached_instance_id = attachment.get('InstanceId', 'N/A')
             attached_instance_name = get_instance_name(attached_instance_id, region) if attached_instance_id != 'N/A' else 'N/A'
             volume_owner = get_tag(volume.tags, "Owner")
-            untagged_volumes.append((volume.id, attached_instance_name, volume_owner))
+            volume_name = get_tag(volume.tags, "Name")
+            untagged_volumes.append((volume.id, attached_instance_name, volume_owner, volume_name))
 
     return untagged_instances, untagged_volumes
 
@@ -55,6 +56,6 @@ for region in get_all_regions():
     print("Instances: (name, id, owner)")
     for (id, name, owner) in untagged_instances:
         print(" * {} ({}, {})".format(name, id, owner))
-    print("Volumes - [id (attached to instance, owner)]: ")
-    for (id, instance_name, owner) in untagged_volumes:
-        print(" * {} ({}, {})".format(id, instance_name, owner))
+    print("Volumes - [id name (attached to instance, owner)]: ")
+    for (id, instance_name, owner, name) in untagged_volumes:
+        print(" * {} {} ({}, {})".format(id, name, instance_name, owner))
