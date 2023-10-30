@@ -1,5 +1,6 @@
 import boto3
 import json
+import progressbar
 
 # Initialize a session using Amazon EC2
 session = boto3.Session()
@@ -10,9 +11,15 @@ def get_all_regions():
     regions = [region['RegionName'] for region in client.describe_regions()['Regions']]
     return regions
 
+REGIONS = get_all_regions()
+GROUPS = set()
+
 def get_volumes_by_group():
     volume_data = {}
-    for region in get_all_regions():
+    global REGIONS
+    global GROUPS
+    print("Gathering volumes:")
+    for region in progressbar.progressbar(REGIONS):
         ec2_resource = boto3.resource('ec2', region_name=region)
         volumes = ec2_resource.volumes.all()
 
@@ -25,6 +32,7 @@ def get_volumes_by_group():
             for tag in volume.tags or []:
                 if tag['Key'] == 'FedoraGroup':
                     fedora_group = tag['Value']
+                    GROUPS.add(fedora_group)
                     break
             
             if not fedora_group:
@@ -80,10 +88,11 @@ def get_instance_price(instance_type, region='us-east-1', service_code='AmazonEC
         return None
 
 def get_instances_by_group_and_region():
-    regions = get_all_regions
-
+    global REGIONS
+    global GROUPS
     instances_data = {}
-    for region in get_all_regions():
+    print("Gathering instances:")
+    for region in progressbar.progressbar(REGIONS):
         ec2_resource = session.resource('ec2', region_name=region)
         instances = ec2_resource.instances.all()
         
@@ -94,6 +103,7 @@ def get_instances_by_group_and_region():
             for tag in instance.tags or []:
                 if tag['Key'] == 'FedoraGroup':
                     fedora_group = tag['Value']
+                    GROUPS.add(fedora_group)
                     break
 
             if not fedora_group:
@@ -113,31 +123,32 @@ def get_instances_by_group_and_region():
 
     return instances_data
 
-def print_volume_instadata(volume_data):
-    for group, regions in volume_data.items():
-        print(f"FedoraGroup: {group}")
-        for region, types in regions.items():
-            print(f"  Region: {region}")
-            for volume_type, size in types.items():
-                print(f"    Volume Type: {volume_type} - Total Size: {size} GiB")
-
 def print_volume_instance_data(volume_data, instances_data):
-    GROUPS={}
-    REGIONS={}
-    for group, regions in instances_data.items() + voluem_data.items():
-        GROUPS.update([group])
-        REGIONS.update([regions])
     for group in GROUPS:
         print(f"FedoraGroup: {group}")
         for region in REGIONS:
-            print(f"  Region: {region}")
-            if group not in instances_data and region not in instances_data[group]:
-                continue
-            for instance_type, count in instances_data[group][region].items()
-                #price = get_instance_price(instance_type, region)
-                print(f"        Instance Type: {instance_type} - Count: {count}")
+            output_instance = []
+            try:
+                for instance_type, count in instances_data[group][region].items():
+                    #price = get_instance_price(instance_type, region)
+                    output_instance += [f"        Instance Type: {instance_type} - Count: {count}"]
+            except KeyError:
+                pass
+            output_volume = []
+            try:
+                for volume_type, size in volume_data[group][region].items():
+                    output_volume += [f"        Volume Type: {volume_type} - Total Size: {size} GiB"]
+            except KeyError:
+                pass
 
-#volume_data = get_volumes_by_group()
-#print_volume_data(volume_data)
+            if output_instance or output_volume:
+                print(f"  Region: {region}")
+                if output_instance:
+                    print('\n'.join(output_instance))
+                if output_volume:
+                    print('\n'.join(output_volume))
+        print()
+
+volume_data = get_volumes_by_group()
 instances_data = get_instances_by_group_and_region()
-print_volume_instance_data({}, instances_data)
+print_volume_instance_data(volume_data, instances_data)
