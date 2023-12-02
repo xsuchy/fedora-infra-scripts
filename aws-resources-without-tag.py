@@ -30,8 +30,10 @@ def older_than_24_hours(timestamp):
 
 def get_untagged_resources(region):
     ec2 = boto3.resource('ec2', region_name=region)
+    client = boto3.client('ec2', region_name=region)
     untagged_instances = []
     untagged_volumes = []
+    untagged_snapshots = []
     for instance in ec2.instances.all():
         if older_than_24_hours(instance.launch_time) and TAG_NAME not in [tag['Key'] for tag in instance.tags or []]:
             instance_name = get_tag(instance.tags, "Name")
@@ -46,16 +48,27 @@ def get_untagged_resources(region):
             volume_name = get_tag(volume.tags, "Name")
             untagged_volumes.append((volume.id, attached_instance_name, volume_owner, volume_name))
 
-    return untagged_instances, untagged_volumes
+    for snapshot in ec2.snapshots.filter(OwnerIds=['self']):
+        if older_than_24_hours(snapshot.start_time) and TAG_NAME not in [tag['Key'] for tag in snapshot.tags or []]:
+            snapshot_name = get_tag(snapshot.tags, 'Name')
+            snapshot_size = snapshot.volume_size
+            untagged_snapshots.append((snapshot.id, snapshot_name, snapshot_size))
+
+    return untagged_instances, untagged_volumes, untagged_snapshots
 
 for region in get_all_regions():
     print("\nRegion: {}".format(region))
-    (untagged_instances, untagged_volumes) = get_untagged_resources(region)
-    if not untagged_instances and not untagged_volumes:
-        continue
-    print("Instances: (name, id, owner)")
-    for (id, name, owner) in untagged_instances:
-        print(" * {} ({}, {})".format(name, id, owner))
-    print("Volumes - [id name (attached to instance, owner)]: ")
-    for (id, instance_name, owner, name) in untagged_volumes:
-        print(" * {} {} ({}, {})".format(id, name, instance_name, owner))
+    (untagged_instances, untagged_volumes, untagged_snapshots) = get_untagged_resources(region)
+    if untagged_instances:
+        print("Instances: (name, id, owner)")
+        for (id, name, owner) in untagged_instances:
+            print("  * {} ({}, {})".format(name, id, owner))
+    if untagged_volumes:
+        print("Volumes - [id name (attached to instance, owner)]: ")
+        for (id, instance_name, owner, name) in untagged_volumes:
+            print("  * {} {} ({}, {})".format(id, name, instance_name, owner))
+    if untagged_snapshots:
+        print(f"Snapshots: (id, name, size)")
+        for (id, snapshot_name, snapshot_size) in untagged_snapshots:
+            print(f"  * {id} {snapshot_name} {snapshot_size} GB")
+
