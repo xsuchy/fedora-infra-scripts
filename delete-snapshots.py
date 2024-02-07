@@ -11,7 +11,7 @@ def delete_snapshots():
     regions = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
 
     # Define the cutoff date
-    cutoff_date = datetime.datetime(2019, 1, 1)
+    cutoff_date = datetime.datetime(2020, 1, 1)
 
     for region in regions:
         print(f"Checking region: {region}")
@@ -29,7 +29,7 @@ def delete_snapshots():
                     ec2.delete_snapshot(SnapshotId=snapshot['SnapshotId'])
                     print(f"Deleted snapshot {snapshot['SnapshotId']} started at {creation_date}")
                 except ClientError as e:
-                    pass
-                    #print(f"Error: {e}")
+                    #pass
+                    print(f"Error: {e}")
 
 delete_snapshots()

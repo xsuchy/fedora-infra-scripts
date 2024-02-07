@@ -53,6 +53,39 @@ def get_volumes_by_group():
     
     return volume_data
 
+
+def get_amis_by_group():
+    amis_data = {}
+    global REGIONS
+    global GROUPS
+    print("Gathering AMIs:")
+    for region in progressbar.progressbar(REGIONS):
+        ec2 = boto3.client('ec2', region_name=region)
+        amis = ec2.describe_images(Owners=['self'])['Images']
+
+        for ami in amis:
+            tags = {tag['Key']: tag['Value'] for tag in ami.get('Tags', [])}
+
+            # Check if the volume has the "FedoraGroup" tag
+            fedora_group = None
+            if 'FedoraGroup' in tags:
+                GROUPS.add(tags['FedoraGroup'])
+                break
+
+            if not fedora_group:
+                continue  # skip volumes without "FedoraGroup" tag
+
+            if fedora_group not in amis_data:
+                amis_data[fedora_group] = {}
+
+            if region not in amis_data[fedora_group]:
+                amis_data[fedora_group][region] = 0
+
+            amis_data[fedora_group][region] += 1
+
+    return amis_data
+
+
 def get_instance_price(instance_type, region='us-east-1', service_code='AmazonEC2', offer_code='AmazonEC2'):
     """
     Get the price per hour for a specific instance type.
@@ -125,7 +158,8 @@ def get_instances_by_group_and_region():
 
     return instances_data
 
-def print_volume_instance_data(volume_data, instances_data):
+
+def print_volume_instance_data(volume_data, instances_data, amis_data):
     for group in GROUPS:
         print(f"FedoraGroup: {group}")
         for region in REGIONS:
@@ -142,6 +176,11 @@ def print_volume_instance_data(volume_data, instances_data):
                     output_volume += [f"        Volume Type: {volume_type} - Total Size: {size} GiB"]
             except KeyError:
                 pass
+            output_amis = ""
+            try:
+                output_amis = f"        # of AMIs: {amis_data[group][region]}"
+            except KeyError:
+                pass
 
             if output_instance or output_volume:
                 print(f"  Region: {region}")
@@ -149,8 +188,13 @@ def print_volume_instance_data(volume_data, instances_data):
                     print('\n'.join(output_instance))
                 if output_volume:
                     print('\n'.join(output_volume))
+                if output_amis:
+                    print(output_amis)
         print()
+
+
 
 volume_data = get_volumes_by_group()
 instances_data = get_instances_by_group_and_region()
-print_volume_instance_data(volume_data, instances_data)
+amis_data = get_amis_by_group()
+print_volume_instance_data(volume_data, instances_data, amis_data)

@@ -30,4 +30,4 @@ for region in regions:
         # Modify the volume type to 'gp3'
         ec2.modify_volume(VolumeId=volume_id, VolumeType='gp3')
         print(f'Volume {volume_id} in region {region} migrated to gp3')
-    sys.exit(1)    
+    #sys.exit(1)    
