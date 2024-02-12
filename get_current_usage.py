@@ -4,6 +4,9 @@ import boto3
 import json
 import progressbar
 
+NOT_TAGGED = "Not tagged"
+FEDORA_GROUP = "FedoraGroup"
+
 # Initialize a session using Amazon EC2
 session = boto3.Session()
 ec2_resource = session.resource('ec2')
@@ -32,13 +35,13 @@ def get_volumes_by_group():
             # Check if the volume has the "FedoraGroup" tag
             fedora_group = None
             for tag in volume.tags or []:
-                if tag['Key'] == 'FedoraGroup':
+                if tag['Key'] == FEDORA_GROUP:
                     fedora_group = tag['Value']
                     GROUPS.add(fedora_group)
                     break
             
             if not fedora_group:
-                continue  # skip volumes without "FedoraGroup" tag
+                fedora_group = NOT_TAGGED
             
             if fedora_group not in volume_data:
                 volume_data[fedora_group] = {}
@@ -73,7 +76,7 @@ def get_amis_by_group():
                 break
 
             if not fedora_group:
-                continue  # skip volumes without "FedoraGroup" tag
+                fedora_group = NOT_TAGGED
 
             if fedora_group not in amis_data:
                 amis_data[fedora_group] = {}
@@ -136,13 +139,13 @@ def get_instances_by_group_and_region():
             # Check if the instance has the "FedoraGroup" tag
             fedora_group = None
             for tag in instance.tags or []:
-                if tag['Key'] == 'FedoraGroup':
+                if tag['Key'] == FEDORA_GROUP:
                     fedora_group = tag['Value']
                     GROUPS.add(fedora_group)
                     break
 
             if not fedora_group:
-                continue  # skip instances without "FedoraGroup" tag
+                fedora_group = NOT_TAGGED
 
             if fedora_group not in instances_data:
                 instances_data[fedora_group] = {}
@@ -161,7 +164,7 @@ def get_instances_by_group_and_region():
 
 def print_volume_instance_data(volume_data, instances_data, amis_data):
     for group in GROUPS:
-        print(f"FedoraGroup: {group}")
+        print(f"{FEDORA_GROUP}: {group}")
         for region in REGIONS:
             output_instance = []
             try:
