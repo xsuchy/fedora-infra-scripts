@@ -36,7 +36,7 @@ def find_and_tag_amis(ami_name, tag_key, tag_value):
             for device in ami['BlockDeviceMappings']:
                 if 'Ebs' in device:
                     snapshot_id = device['Ebs']['SnapshotId']
-                    print(f"Tagging Snapshot: {snapshot_id} in {region}")
+                    print(f"    Tagging Snapshot: {snapshot_id} in {region}")
                     ec2.create_tags(Resources=[snapshot_id], Tags=[{'Key': tag_key, 'Value': tag_value}])
             #sys.exit(1)
 
