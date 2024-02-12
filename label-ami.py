@@ -15,6 +15,15 @@ def get_regions():
     regions = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
     return regions
 
+def tag_exists(tags, tag_key, tag_value):
+    """
+    Check if the tag already exists in the list of tags.
+    """
+    for tag in tags:
+        if tag['Key'] == tag_key and tag['Value'] == tag_value:
+            return True
+    return False
+
 def find_and_tag_amis(ami_name, tag_key, tag_value):
     """
     Find all AMIs with the given name across all regions and tag them and their snapshots.
@@ -31,7 +40,7 @@ def find_and_tag_amis(ami_name, tag_key, tag_value):
             if not tag_exists(ami.get('Tags', []), tag_key, tag_value):
                 print(f"  Tagging AMI: {ami_id}")
             else:
-                print(f"AMI: {ami_id} already has the tag.")
+                print(f"  AMI: {ami_id} already has the tag.")
 
             # Tag the AMI
             ec2.create_tags(Resources=[ami_id], Tags=[{'Key': tag_key, 'Value': tag_value}])
@@ -40,12 +49,15 @@ def find_and_tag_amis(ami_name, tag_key, tag_value):
             for device in ami['BlockDeviceMappings']:
                 if 'Ebs' in device:
                     snapshot_id = device['Ebs']['SnapshotId']
-                    snapshot = ec2.describe_snapshots(SnapshotIds=[snapshot_id])['Snapshots'][0]
-                    if not tag_exists(snapshot.get('Tags', []), tag_key, tag_value):
-                        print(f"    Tagging Snapshot: {snapshot_id}")
-                        ec2.create_tags(Resources=[snapshot_id], Tags=[{'Key': tag_key, 'Value': tag_value}])
-                    else:
-                        print(f"    Snapshot: {snapshot_id} already has the tag.")
+                    try:
+                      snapshot = ec2.describe_snapshots(SnapshotIds=[snapshot_id])['Snapshots'][0]
+                      if not tag_exists(snapshot.get('Tags', []), tag_key, tag_value):
+                          print(f"    Tagging Snapshot: {snapshot_id}")
+                          ec2.create_tags(Resources=[snapshot_id], Tags=[{'Key': tag_key, 'Value': tag_value}])
+                      else:
+                          print(f"    Snapshot: {snapshot_id} already has the tag.")
+                    except:
+                        sys.stderr.write(f"ERROR: Snapshot: {snapshot_id} in {region} does not exist.\n")
             #sys.exit(1)
 
 parser = argparse.ArgumentParser(description='Tag AMIs and their snapshots based on AMI name substring.')
