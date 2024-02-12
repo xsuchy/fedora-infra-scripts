@@ -5,6 +5,7 @@
 
 # Reviewed and edited
 
+import argparse
 import boto3
 import sys
 
@@ -40,7 +41,12 @@ def find_and_tag_amis(ami_name, tag_key, tag_value):
                     ec2.create_tags(Resources=[snapshot_id], Tags=[{'Key': tag_key, 'Value': tag_value}])
             #sys.exit(1)
 
-ami_name = input("Enter the AMI name: ")
+parser = argparse.ArgumentParser(description='Tag AMIs and their snapshots based on AMI name substring.')
+parser.add_argument('ami_name', type=str, help='AMI name substring to search for')
+
+args = parser.parse_args()
+
+ami_name = args.ami_name
 tag_key = "FedoraGroup"
 tag_value = "ga-archives"
 find_and_tag_amis(ami_name, tag_key, tag_value)
