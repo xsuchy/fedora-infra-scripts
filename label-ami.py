@@ -23,7 +23,7 @@ def find_and_tag_amis(ami_name, tag_key, tag_value):
         ec2 = boto3.client('ec2', region_name=region)
         
         # Find AMIs by name containing the searched string
-        ami_search_pattern = f"*{ami_name}*"
+        ami_search_pattern = f"{ami_name}*"
         amis = ec2.describe_images(Filters=[{'Name': 'name', 'Values': [ami_search_pattern]}])['Images']
         for ami in amis:
             ami_id = ami['ImageId']
