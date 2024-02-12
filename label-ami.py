@@ -28,7 +28,10 @@ def find_and_tag_amis(ami_name, tag_key, tag_value):
         amis = ec2.describe_images(Filters=[{'Name': 'name', 'Values': [ami_search_pattern]}])['Images']
         for ami in amis:
             ami_id = ami['ImageId']
-            print(f"  Tagging AMI: {ami_id}")
+            if not tag_exists(ami.get('Tags', []), tag_key, tag_value):
+                print(f"  Tagging AMI: {ami_id}")
+            else:
+                print(f"AMI: {ami_id} already has the tag.")
 
             # Tag the AMI
             ec2.create_tags(Resources=[ami_id], Tags=[{'Key': tag_key, 'Value': tag_value}])
@@ -37,8 +40,12 @@ def find_and_tag_amis(ami_name, tag_key, tag_value):
             for device in ami['BlockDeviceMappings']:
                 if 'Ebs' in device:
                     snapshot_id = device['Ebs']['SnapshotId']
-                    print(f"    Tagging Snapshot: {snapshot_id} in {region}")
-                    ec2.create_tags(Resources=[snapshot_id], Tags=[{'Key': tag_key, 'Value': tag_value}])
+                    snapshot = ec2.describe_snapshots(SnapshotIds=[snapshot_id])['Snapshots'][0]
+                    if not tag_exists(snapshot.get('Tags', []), tag_key, tag_value):
+                        print(f"    Tagging Snapshot: {snapshot_id}")
+                        ec2.create_tags(Resources=[snapshot_id], Tags=[{'Key': tag_key, 'Value': tag_value}])
+                    else:
+                        print(f"    Snapshot: {snapshot_id} already has the tag.")
             #sys.exit(1)
 
 parser = argparse.ArgumentParser(description='Tag AMIs and their snapshots based on AMI name substring.')
