@@ -17,7 +17,7 @@ def get_all_regions():
     return regions
 
 REGIONS = get_all_regions()
-GROUPS = set()
+GROUPS = {NOT_TAGGED}
 
 def get_volumes_by_group():
     volume_data = {}
@@ -71,9 +71,8 @@ def get_amis_by_group():
 
             # Check if the volume has the "FedoraGroup" tag
             fedora_group = None
-            if 'FedoraGroup' in tags:
+            if FEDORA_GROUP in tags and FEDORA_GROUP not in tags:
                 GROUPS.add(tags['FedoraGroup'])
-                break
 
             if not fedora_group:
                 fedora_group = NOT_TAGGED
@@ -87,6 +86,36 @@ def get_amis_by_group():
             amis_data[fedora_group][region] += 1
 
     return amis_data
+
+def get_snapshots_by_group():
+    snapshots_data = {}
+    global REGIONS
+    global GROUPS
+    print("Gathering Snapshots:")
+    for region in progressbar.progressbar(REGIONS):
+        ec2 = boto3.resource('ec2', region_name=region)
+        snapshots = ec2.snapshots.filter(OwnerIds=['self'])
+        for snap in snapshots:
+            tags = {tag['Key']: tag['Value'] for tag in snap.tags or []}
+
+            # Check if the volume has the "FedoraGroup" tag
+            fedora_group = None
+            if FEDORA_GROUP in tags and FEDORA_GROUP not in GROUPS:
+                GROUPS.add(tags['FedoraGroup'])
+
+            if not fedora_group:
+                fedora_group = NOT_TAGGED
+
+            if fedora_group not in snapshots_data:
+                snapshots_data[fedora_group] = {}
+
+            if region not in snapshots_data[fedora_group]:
+                snapshots_data[fedora_group][region] = {'count': 0, 'size': 0}
+
+            snapshots_data[fedora_group][region]['count'] += 1
+            snapshots_data[fedora_group][region]['size'] += snap.volume_size
+
+    return snapshots_data
 
 
 def get_instance_price(instance_type, region='us-east-1', service_code='AmazonEC2', offer_code='AmazonEC2'):
@@ -162,7 +191,7 @@ def get_instances_by_group_and_region():
     return instances_data
 
 
-def print_volume_instance_data(volume_data, instances_data, amis_data):
+def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots_data):
     for group in GROUPS:
         print(f"{FEDORA_GROUP}: {group}")
         for region in REGIONS:
@@ -184,8 +213,11 @@ def print_volume_instance_data(volume_data, instances_data, amis_data):
                 output_amis = f"        # of AMIs: {amis_data[group][region]}"
             except KeyError:
                 pass
+            output_snapshots = ""
+            if group in snapshots_data and region in snapshots_data[group]:
+                output_snapshots = f"        Snapshots: {snapshots_data[group][region]['size']} GB in {snapshots_data[group][region]['count']} snapshots"
 
-            if output_instance or output_volume:
+            if output_instance or output_volume or output_amis or output_snapshots:
                 print(f"  Region: {region}")
                 if output_instance:
                     print('\n'.join(output_instance))
@@ -193,11 +225,13 @@ def print_volume_instance_data(volume_data, instances_data, amis_data):
                     print('\n'.join(output_volume))
                 if output_amis:
                     print(output_amis)
+                if output_snapshots:
+                    print(output_snapshots)
         print()
-
 
 
 volume_data = get_volumes_by_group()
 instances_data = get_instances_by_group_and_region()
 amis_data = get_amis_by_group()
-print_volume_instance_data(volume_data, instances_data, amis_data)
+snapshots_data = get_snapshots_by_group()
+print_volume_instance_data(volume_data, instances_data, amis_data, snapshots_data)

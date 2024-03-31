@@ -76,12 +76,12 @@ for region in get_all_regions():
         print("Volumes - [id name (attached to instance, owner)]: ")
         for (id, instance_name, owner, name) in untagged_volumes:
             print("  * {} {} ({}, {})".format(id, name, instance_name, owner))
-    if untagged_amis:
-        print("AMIs - [id, name]:")
-        for (id, name) in untagged_amis:
-            print(f"  * {id} {name}")
-    if untagged_snapshots:
-        print(f"Snapshots: (id, name, size)")
-        for (id, snapshot_name, snapshot_size) in untagged_snapshots:
-            print(f"  * {id} {snapshot_name} {snapshot_size} GB")
+#    if untagged_amis:
+#        print("AMIs - [id, name]:")
+#        for (id, name) in untagged_amis:
+#            print(f"  * {id} {name}")
+#    if untagged_snapshots:
+#        print(f"Snapshots: (id, name, size)")
+#        for (id, snapshot_name, snapshot_size) in untagged_snapshots:
+#            print(f"  * {id} {snapshot_name} {snapshot_size} GB")
 
