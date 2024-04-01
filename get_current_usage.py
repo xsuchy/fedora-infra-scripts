@@ -18,8 +18,28 @@ def get_all_regions():
     return regions
 
 REGIONS = get_all_regions()
+#REGIONS = ['us-east-2']
 GROUPS = {NOT_TAGGED}
 SERVICE = {NOT_TAGGED}
+
+def parse_tags(tags):
+    global SERVICE
+    global GROUPS
+    tags = {tag['Key']: tag['Value'] for tag in tags}
+    # Check if the volume has the "FedoraGroup" tag
+    fedora_group = NOT_TAGGED
+    if FEDORA_GROUP in tags:
+        fedora_group = tags[FEDORA_GROUP]
+        if fedora_group not in GROUPS:
+            GROUPS.add(fedora_group)
+
+    service_name = NOT_TAGGED
+    if SERVICE_NAME in tags:
+        service_name = tags[SERVICE_NAME]
+        if service_name not in SERVICE:
+            SERVICE.add(service_name)
+
+    return (fedora_group, service_name)
 
 def get_volumes_by_group():
     volume_data = {}
@@ -34,26 +54,9 @@ def get_volumes_by_group():
         for volume in volumes:
             size = volume.size  # size of the volume in GiB
             volume_type = volume.volume_type  # type of the volume
-            tags = volume.tags
+            tags = volume.tags or []
             
-            # Check if the volume has the "FedoraGroup" tag
-            fedora_group = None
-            for tag in tags or []:
-                if tag['Key'] == FEDORA_GROUP:
-                    fedora_group = tag['Value']
-                    GROUPS.add(fedora_group)
-                    break
-            if not fedora_group:
-                fedora_group = NOT_TAGGED
-
-            service_name = None
-            for tag in tags or []:
-                if tag['Key'] == SERVICE_NAME:
-                    service_name = tag['Value']
-                    SERVICE.add(service_name)
-                    break
-            if not service_name:
-                service_name = NOT_TAGGED
+            (fedora_group, service_name) = parse_tags(tags)
             
             if fedora_group not in volume_data:
                 volume_data[fedora_group] = {}
@@ -82,22 +85,7 @@ def get_amis_by_group():
         amis = ec2.describe_images(Owners=['self'])['Images']
 
         for ami in amis:
-            tags = {tag['Key']: tag['Value'] for tag in ami.get('Tags', [])}
-
-            # Check if the volume has the "FedoraGroup" tag
-            fedora_group = None
-            if FEDORA_GROUP in tags and FEDORA_GROUP not in tags:
-                fedora_group = tags[FEDORA_GROUP]
-                GROUPS.add(fedora_group)
-            if not fedora_group:
-                fedora_group = NOT_TAGGED
-
-            service_name = None
-            if SERVICE_NAME in tags and SERVICE_NAME not in tags:
-                service_name = tags[SERVICE_NAME]
-                SERVICE.add(service_name)
-            if not service_name:
-                service_name = NOT_TAGGED
+            (fedora_group, service_name) = parse_tags(ami.get('Tags', [])) 
 
             if fedora_group not in amis_data:
                 amis_data[fedora_group] = {}
@@ -122,22 +110,7 @@ def get_snapshots_by_group():
         ec2 = boto3.resource('ec2', region_name=region)
         snapshots = ec2.snapshots.filter(OwnerIds=['self'])
         for snap in snapshots:
-            tags = {tag['Key']: tag['Value'] for tag in snap.tags or []}
-
-            # Check if the volume has the "FedoraGroup" tag
-            fedora_group = None
-            if FEDORA_GROUP in tags and FEDORA_GROUP not in GROUPS:
-                fedora_group = tags['FedoraGroup']
-                GROUPS.add(fedora_group)
-            if not fedora_group:
-                fedora_group = NOT_TAGGED
-
-            service_name = None
-            if SERVICE_NAME in tags and SERVICE_NAME not in tags:
-                service_name = tags[SERVICE_NAME]
-                SERVICE.add(service_name)
-            if not service_name:
-                service_name = NOT_TAGGED
+            (fedora_group, service_name) = parse_tags(snap.tags or [])
 
             if fedora_group not in snapshots_data:
                 snapshots_data[fedora_group] = {}
@@ -203,22 +176,8 @@ def get_instances_by_group_and_region():
         for instance in instances:
             instance_type = instance.instance_type  # type of the instance
             # Check if the instance has the "FedoraGroup" tag
-            tags = instance.tags
-            fedora_group = None
-            for tag in tags or []:
-                if tag['Key'] == FEDORA_GROUP:
-                    fedora_group = tag['Value']
-                    GROUPS.add(fedora_group)
-                    break
-            if not fedora_group:
-                fedora_group = NOT_TAGGED
-
-            service_name = None
-            if SERVICE_NAME in tags and SERVICE_NAME not in tags:
-                service_name = tags[SERVICE_NAME]
-                SERVICE.add(service_name)
-            if not service_name:
-                service_name = NOT_TAGGED
+            tags = instance.tags or []
+            (fedora_group, service_name) = parse_tags(tags)
 
             if fedora_group not in instances_data:
                 instances_data[fedora_group] = {}
@@ -230,7 +189,7 @@ def get_instances_by_group_and_region():
             if service_name not in instances_data[fedora_group][region]:
                 instances_data[fedora_group][region][service_name] = {}
 
-            if instance_type not in instances_data[fedora_group][region]:
+            if instance_type not in instances_data[fedora_group][region][service_name]:
                 instances_data[fedora_group][region][service_name][instance_type] = 0
             
             instances_data[fedora_group][region][service_name][instance_type] += 1
@@ -244,6 +203,7 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
     global SERVICE
     for group in GROUPS:
         print(f"{FEDORA_GROUP}: {group}")
+        #import pdb; pdb.set_trace()
         for region in REGIONS:
             service_output = ""
             for service in SERVICE:
@@ -268,12 +228,12 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
                 output_snapshots = ""
                 if group in snapshots_data and region in snapshots_data[group] and service in snapshots_data[group][region]:
                     output_snapshots = f"        Snapshots: {snapshots_data[group][region][service]['size']} GB in {snapshots_data[group][region][service]['count']} snapshots"
-    
+
                 if output_instance or output_volume or output_amis or output_snapshots:
                     if service != NOT_TAGGED:
-                        service_output = f"    Service Name: {service}\n"
+                        service_output += f"    Service Name: {service}\n"
                     else:
-                        service_output = ""
+                        service_output += "    Service Name:\n"
                     if output_instance:
                         service_output += '\n'.join(output_instance) + "\n"
                     if output_volume:
@@ -290,8 +250,10 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
 
 
 volume_data = get_volumes_by_group()
+#volume_data = {}
 instances_data = get_instances_by_group_and_region()
 amis_data = get_amis_by_group()
+#amis_data = {}
 snapshots_data = get_snapshots_by_group()
-print(SERVICE)
+#snapshots_data = {}
 print_volume_instance_data(volume_data, instances_data, amis_data, snapshots_data)
