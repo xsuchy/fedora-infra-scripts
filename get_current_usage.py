@@ -18,7 +18,7 @@ def get_all_regions():
     return regions
 
 REGIONS = get_all_regions()
-#REGIONS = ['us-east-2']
+#REGIONS = ['us-east-1']
 GROUPS = {NOT_TAGGED}
 SERVICE = {NOT_TAGGED}
 
@@ -66,7 +66,7 @@ def get_volumes_by_group():
             if service_name not in volume_data[fedora_group][region]:
                 volume_data[fedora_group][region][service_name] = {}
 
-            if volume_type not in volume_data[fedora_group][region]:
+            if volume_type not in volume_data[fedora_group][region][service_name]:
                 volume_data[fedora_group][region][service_name][volume_type] = 0
             
             volume_data[fedora_group][region][service_name][volume_type] += size
