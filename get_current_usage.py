@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-
+import awspricing
 import boto3
 import json
 import progressbar
@@ -7,6 +7,7 @@ import progressbar
 NOT_TAGGED = "Not tagged"
 FEDORA_GROUP = "FedoraGroup"
 SERVICE_NAME = "ServiceName"
+HOURS_PER_MONTH = 730
 
 # Initialize a session using Amazon EC2
 session = boto3.Session()
@@ -201,6 +202,7 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
     global REGIONS
     global GROUPS
     global SERVICE
+    ec2_offer = awspricing.offer('AmazonEC2')
     for group in GROUPS:
         print(f"{FEDORA_GROUP}: {group}")
         #import pdb; pdb.set_trace()
@@ -210,14 +212,28 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
                 output_instance = []
                 try:
                     for instance_type, count in instances_data[group][region][service].items():
-                        #price = get_instance_price(instance_type, region)
-                        output_instance += [f"        Instance Type: {instance_type} - Count: {count}"]
+                        try:
+                            price = ec2_offer.ondemand_hourly(instance_type=instance_type,
+                                                              region=region,
+                                                              operating_system='Linux',
+                                                             )
+                        except ValueError:
+                            price = 0
+                        price = round(price * HOURS_PER_MONTH * count)
+                        output_instance += [f"        Instance Type: {instance_type} - Count: {count} - Price: ${price}"]
                 except KeyError:
                     pass
                 output_volume = []
                 try:
                     for volume_type, size in volume_data[group][region][service].items():
-                        output_volume += [f"        Volume Type: {volume_type} - Total Size: {size} GiB"]
+                        try:
+                            price = ec2_offer.ebs_volume_monthly(volume_type=volume_type,
+                                                                 region=region
+                                                                )
+                        except ValueError:
+                            price = 0
+                        price = round(price * size)
+                        output_volume += [f"        Volume Type: {volume_type} - Total Size: {size} GiB - Price: ${price}"]
                 except KeyError:
                     pass
                 output_amis = ""
@@ -252,8 +268,8 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
 volume_data = get_volumes_by_group()
 #volume_data = {}
 instances_data = get_instances_by_group_and_region()
-amis_data = get_amis_by_group()
-#amis_data = {}
-snapshots_data = get_snapshots_by_group()
-#snapshots_data = {}
+#amis_data = get_amis_by_group()
+amis_data = {}
+#snapshots_data = get_snapshots_by_group()
+snapshots_data = {}
 print_volume_instance_data(volume_data, instances_data, amis_data, snapshots_data)
