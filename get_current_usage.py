@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-
+import awspricing
 import boto3
 import json
 import progressbar
@@ -7,6 +7,7 @@ import progressbar
 NOT_TAGGED = "Not tagged"
 FEDORA_GROUP = "FedoraGroup"
 SERVICE_NAME = "ServiceName"
+HOURS_PER_MONTH = 730
 
 # Initialize a session using Amazon EC2
 session = boto3.Session()
@@ -54,6 +55,7 @@ def get_volumes_by_group():
         for volume in volumes:
             size = volume.size  # size of the volume in GiB
             volume_type = volume.volume_type  # type of the volume
+            iops = volume.iops or 0
             tags = volume.tags or []
             
             (fedora_group, service_name) = parse_tags(tags)
@@ -67,9 +69,10 @@ def get_volumes_by_group():
                 volume_data[fedora_group][region][service_name] = {}
 
             if volume_type not in volume_data[fedora_group][region][service_name]:
-                volume_data[fedora_group][region][service_name][volume_type] = 0
+                volume_data[fedora_group][region][service_name][volume_type] = [0, 0]
             
-            volume_data[fedora_group][region][service_name][volume_type] += size
+            volume_data[fedora_group][region][service_name][volume_type][0] += size
+            volume_data[fedora_group][region][service_name][volume_type][1] += iops
     
     return volume_data
 
@@ -126,43 +129,6 @@ def get_snapshots_by_group():
 
     return snapshots_data
 
-
-def get_instance_price(instance_type, region='us-east-1', service_code='AmazonEC2', offer_code='AmazonEC2'):
-    """
-    Get the price per hour for a specific instance type.
-    
-    :param instance_type: The type of the instance e.g., 't2.micro'.
-    :param region: The AWS region e.g., 'us-east-1'.
-    :param service_code: The service code for EC2.
-    :param offer_code: The offer code for On-Demand instances.
-    :return: The price per hour for the specified instance type.
-    """
-    
-    pricing_client = boto3.client('pricing', region_name='us-east-1')
-    import pdb; pdb.set_trace()
-    
-    try:
-        response = pricing_client.get_products(
-            ServiceCode=service_code,
-            Filters=[
-                {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
-                {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': region},
-                {'Type': 'TERM_MATCH', 'Field': 'productFamily', 'Value': 'Compute Instance'},
-                {'Type': 'TERM_MATCH', 'Field': 'preInstalledSw', 'Value': 'NA'},
-                {'Type': 'TERM_MATCH', 'Field': 'termType', 'Value': 'OnDemand'}
-            ],
-            MaxResults=1
-        )
-        
-        price_dimensions = json.loads(response['PriceList'][0])['terms']['OnDemand']
-        price_dimension = next(iter(price_dimensions.values()))['priceDimensions']
-        price_per_hour = next(iter(price_dimension.values()))['pricePerUnit']['USD']
-        
-        return price_per_hour
-    
-    except (IndexError, KeyError):
-        return None
-
 def get_instances_by_group_and_region():
     global REGIONS
     global GROUPS
@@ -201,23 +167,47 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
     global REGIONS
     global GROUPS
     global SERVICE
+    print("Getting price data:")
+    ec2_offer = awspricing.offer('AmazonEC2')
     for group in GROUPS:
-        print(f"{FEDORA_GROUP}: {group}")
         #import pdb; pdb.set_trace()
+        output = ""
+        price_group_total = 0
         for region in REGIONS:
             service_output = ""
             for service in SERVICE:
+                price_total = 0
                 output_instance = []
                 try:
                     for instance_type, count in instances_data[group][region][service].items():
-                        #price = get_instance_price(instance_type, region)
-                        output_instance += [f"        Instance Type: {instance_type} - Count: {count}"]
+                        try:
+                            price = ec2_offer.ondemand_hourly(instance_type=instance_type,
+                                                              region=region,
+                                                              operating_system='Linux',
+                                                             )
+                        except ValueError:
+                            price = 0
+                        price = round(price * HOURS_PER_MONTH * count)
+                        price_total += price
+                        output_instance += [f"        Instance Type: {instance_type} - Count: {count} - Price: ${price}"]
                 except KeyError:
                     pass
                 output_volume = []
                 try:
-                    for volume_type, size in volume_data[group][region][service].items():
-                        output_volume += [f"        Volume Type: {volume_type} - Total Size: {size} GiB"]
+                    for volume_type, size_iops in volume_data[group][region][service].items():
+                        (size, iops) = size_iops
+                        try:
+                            price = ec2_offer.ebs_volume_monthly(volume_type=volume_type,
+                                                                 region=region
+                                                                )
+                        except ValueError:
+                            price = 0
+                        iops_price = ec2_offer.ebs_iops_monthly(volume_type=volume_type,
+                                                                region=region
+                                                                )
+                        price = round(price * size + iops_price*iops)
+                        price_total += price
+                        output_volume += [f"        Volume Type: {volume_type} - Total Size: {size} GiB - Price: ${price}"]
                 except KeyError:
                     pass
                 output_amis = ""
@@ -231,9 +221,9 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
 
                 if output_instance or output_volume or output_amis or output_snapshots:
                     if service != NOT_TAGGED:
-                        service_output += f"    Service Name: {service}\n"
+                        service_output += f"    Service Name: {service} - PriceSum: ${price_total}\n"
                     else:
-                        service_output += "    Service Name:\n"
+                        service_output += f"    Service Name: N/A - PriceSum: ${price_total}\n"
                     if output_instance:
                         service_output += '\n'.join(output_instance) + "\n"
                     if output_volume:
@@ -242,10 +232,13 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
                         service_output += output_amis + "\n"
                     if output_snapshots:
                         service_output + output_snapshots + "\n"
+                price_group_total += price_total
             #import pdb; pdb.set_trace()
             if service_output:
-                print(f"  Region: {region}")
-                print(service_output.rstrip())
+                output += f"  Region: {region}\n"
+                output += service_output.rstrip() + "\n"
+        print(f"{FEDORA_GROUP}: {group} - PriceSum: ${price_group_total}")
+        print(output)
         print()
 
 
@@ -254,6 +247,6 @@ volume_data = get_volumes_by_group()
 instances_data = get_instances_by_group_and_region()
 amis_data = get_amis_by_group()
 #amis_data = {}
-snapshots_data = get_snapshots_by_group()
-#snapshots_data = {}
+#snapshots_data = get_snapshots_by_group()
+snapshots_data = {}
 print_volume_instance_data(volume_data, instances_data, amis_data, snapshots_data)
