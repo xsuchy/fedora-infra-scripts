@@ -35,12 +35,13 @@ def delete_old_amis(older_than_date):
                 # Deregister the AMI
                 ec2_region_client.deregister_image(ImageId=ami_id)
             else:
-                print(f"Skipping AMI {ami_id} in region {region} because it has a 'FedoraGroup' tag")
+                pass
+                #print(f"Skipping AMI {ami_id} in region {region} because it has a 'FedoraGroup' tag")
             
         print(f"Finished checking region: {region}")
 
 
 # Specify the cutoff date in YYYY, MM, DD format
-cutoff_date = datetime(2023, 6, 1, tzinfo=timezone.utc)
+cutoff_date = datetime(2023, 10, 1, tzinfo=timezone.utc)
 delete_old_amis(cutoff_date)
 
