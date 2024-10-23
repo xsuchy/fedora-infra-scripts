@@ -9,6 +9,22 @@ FEDORA_GROUP = "FedoraGroup"
 SERVICE_NAME = "ServiceName"
 HOURS_PER_MONTH = 730
 
+RESERVED_INSTANCES = {
+    # see https://docs.google.com/spreadsheets/d/1-5EyRjMSC2_LgHOpdG6_HwBjcSIY36rhYOLVYBcwAKY/edit?gid=0#gid=0
+    'copr': {
+      'us-east-1': {
+        "t3a.medium": 2,
+        "c7g.xlarge": 15,
+        "t3a.xlarge": 1,
+        "t3a.small": 1,
+        "c7i.xlarge": 5,
+        "c7a.4xlarge": 1,
+        "t3a.2xlarge": 1,
+        "r5a.large": 1,
+        "m5a.4xlarge": 1,
+        "c7i.xlarge": 3,
+        "c7g.xlarge": 12,
+}}}
 # Initialize a session using Amazon EC2
 session = boto3.Session()
 ec2_resource = session.resource('ec2')
@@ -181,6 +197,18 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
                 try:
                     for instance_type, count in instances_data[group][region][service].items():
                         try:
+                            if RESERVED_INSTANCES[group][region][instance_type] > 0:
+                                count_remaining = count - RESERVED_INSTANCES[group][region][instance_type]
+                                if count_remaining <= 0:
+                                    # do not count price of this instance
+                                    output_instance += [f"        Instance Type: {instance_type} - Count: {count} - Price: 0 (reserved)"]
+                                    continue
+                                else:
+                                    output_instance += [f"        Instance Type: {instance_type} - Count: {RESERVED_INSTANCES[group][region][instance_type]} - Price: 0 (reserved)"]
+                                count = count_remaining
+                        except KeyError:
+                            pass
+                        try:
                             price = ec2_offer.ondemand_hourly(instance_type=instance_type,
                                                               region=region,
                                                               operating_system='Linux',
@@ -245,8 +273,8 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
 volume_data = get_volumes_by_group()
 #volume_data = {}
 instances_data = get_instances_by_group_and_region()
-amis_data = get_amis_by_group()
-#amis_data = {}
+#amis_data = get_amis_by_group()
+amis_data = {}
 #snapshots_data = get_snapshots_by_group()
 snapshots_data = {}
 print_volume_instance_data(volume_data, instances_data, amis_data, snapshots_data)
