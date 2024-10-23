@@ -185,6 +185,8 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
     global SERVICE
     print("Getting price data:")
     ec2_offer = awspricing.offer('AmazonEC2')
+    output_per_group = {}
+    price_per_group = {}
     for group in GROUPS:
         #import pdb; pdb.set_trace()
         output = ""
@@ -265,8 +267,15 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
             if service_output:
                 output += f"  Region: {region}\n"
                 output += service_output.rstrip() + "\n"
-        print(f"{FEDORA_GROUP}: {group} - PriceSum: ${price_group_total}")
-        print(output)
+        output_per_group[group] = f"{FEDORA_GROUP}: {group} - PriceSum: ${price_group_total}\n{output}\n"
+        price_per_group[group] = price_group_total
+    sorted_groups = sorted(output_per_group, key=lambda group: price_per_group[group], reverse=True)
+    print("Summary:")
+    for i in sorted_groups:
+        print(f"  * {i} - ${price_per_group[i]}")
+    print()
+    for i in sorted_groups:
+        print(output_per_group[i])
         print()
 
 
