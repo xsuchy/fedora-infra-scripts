@@ -27,11 +27,12 @@ def delete_old_amis(older_than_date):
         
         for ami in old_amis:
             ami_id = ami['ImageId']
+            ami_name = ami.get('Name', '')
             # Check for 'FedoraGroup' tag
             has_fedora_group_tag = any(tag['Key'] == 'FedoraGroup' for tag in ami.get('Tags', []))
             
             if not has_fedora_group_tag:
-                print(f"Deregistering AMI {ami_id} in region {region} as it does not have a 'FedoraGroup' tag")
+                print(f"Deregistering AMI {ami_id} {ami_name} in region {region} as it does not have a 'FedoraGroup' tag")
                 # Deregister the AMI
                 ec2_region_client.deregister_image(ImageId=ami_id)
             else:
@@ -42,6 +43,5 @@ def delete_old_amis(older_than_date):
 
 
 # Specify the cutoff date in YYYY, MM, DD format
-cutoff_date = datetime(2024, 3, 1, tzinfo=timezone.utc)
+cutoff_date = datetime(2024, 7, 1, tzinfo=timezone.utc)
 delete_old_amis(cutoff_date)
-
