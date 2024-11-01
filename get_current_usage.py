@@ -282,8 +282,8 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
 volume_data = get_volumes_by_group()
 #volume_data = {}
 instances_data = get_instances_by_group_and_region()
-#amis_data = get_amis_by_group()
-amis_data = {}
-#snapshots_data = get_snapshots_by_group()
-snapshots_data = {}
+amis_data = get_amis_by_group()
+#amis_data = {}
+snapshots_data = get_snapshots_by_group()
+#snapshots_data = {}
 print_volume_instance_data(volume_data, instances_data, amis_data, snapshots_data)
