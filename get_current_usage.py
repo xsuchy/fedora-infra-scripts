@@ -156,6 +156,9 @@ def get_instances_by_group_and_region():
         instances = ec2_resource.instances.all()
         
         for instance in instances:
+            if instance.state['Name'] == 'terminated':
+                print("terminated")
+                continue
             instance_type = instance.instance_type  # type of the instance
             # Check if the instance has the "FedoraGroup" tag
             tags = instance.tags or []
