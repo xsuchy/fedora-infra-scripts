@@ -23,7 +23,7 @@ RESERVED_INSTANCES = {
         "r5a.large": 1,
         "m5a.4xlarge": 1,
         "c7i.xlarge": 3,
-        "c7g.xlarge": 25,
+        "c7g.xlarge": 27,
 }}}
 # Initialize a session using Amazon EC2
 session = boto3.Session()
