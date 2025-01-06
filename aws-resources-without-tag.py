@@ -68,18 +68,18 @@ def get_untagged_resources(region):
 for region in get_all_regions():
     print("\nRegion: {}".format(region))
     (untagged_instances, untagged_volumes, untagged_amis, untagged_snapshots) = get_untagged_resources(region)
-    if untagged_instances:
-        print("Instances: (name, id, owner)")
-        for (id, name, owner) in untagged_instances:
-            print("  * {} ({}, {})".format(name, id, owner))
-    if untagged_volumes:
-        print("Volumes - [id name (attached to instance, owner)]: ")
-        for (id, instance_name, owner, name) in untagged_volumes:
-            print("  * {} {} ({}, {})".format(id, name, instance_name, owner))
-#    if untagged_amis:
-#        print("AMIs - [id, name]:")
-#        for (id, name) in untagged_amis:
-#            print(f"  * {id} {name}")
+#    if untagged_instances:
+#        print("Instances: (name, id, owner)")
+#        for (id, name, owner) in untagged_instances:
+#            print("  * {} ({}, {})".format(name, id, owner))
+#    if untagged_volumes:
+#        print("Volumes - [id name (attached to instance, owner)]: ")
+#        for (id, instance_name, owner, name) in untagged_volumes:
+#            print("  * {} {} ({}, {})".format(id, name, instance_name, owner))
+    if untagged_amis:
+        print("AMIs - [id, name]:")
+        for (id, name) in untagged_amis:
+            print(f"  * {id} {name}")
 #    if untagged_snapshots:
 #        print(f"Snapshots: (id, name, size)")
 #        for (id, snapshot_name, snapshot_size) in untagged_snapshots:

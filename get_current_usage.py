@@ -14,10 +14,9 @@ RESERVED_INSTANCES = {
     'copr': {
       'us-east-1': {
         "t3a.medium": 2,
-        "c7g.xlarge": 15,
         "t3a.xlarge": 1,
         "t3a.small": 1,
-        "c7i.xlarge": 5,
+        "c7i.xlarge": 11,
         "c7a.4xlarge": 1,
         "t3a.2xlarge": 1,
         "r5a.large": 1,
