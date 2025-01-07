@@ -7,6 +7,9 @@ The name of the file will be passed as command line argument.
 import csv
 import sys
 
+APPCODE = "copr-001"
+RESOURCE_GROUP_NAME = "copr"
+
 def not_none(value, default):
     if value is None:
         return default
@@ -36,7 +39,7 @@ def calculate_cost_sum(file_path):
                     resource_group_name = not_none(row["Resource Group Name"], "").strip()
                     cost = float(not_none(row["Cost"], "0").strip())
 
-                    if appcode == "copr-001" or resource_group_name == "copr":
+                    if appcode == APPCODE or resource_group_name == RESOURCE_GROUP_NAME:
                         total_cost += cost
                 except ValueError:
                     # Handle cases where the "Cost" column cannot be converted to float
