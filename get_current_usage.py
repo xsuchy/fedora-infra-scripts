@@ -33,8 +33,8 @@ def get_all_regions():
     regions = [region['RegionName'] for region in client.describe_regions()['Regions']]
     return regions
 
-REGIONS = get_all_regions()
-#REGIONS = ['us-east-1']
+#REGIONS = get_all_regions()
+REGIONS = ['us-east-1']
 GROUPS = {NOT_TAGGED}
 SERVICE = {NOT_TAGGED}
 
@@ -156,7 +156,6 @@ def get_instances_by_group_and_region():
         
         for instance in instances:
             if instance.state['Name'] in ['terminated', 'stopped']:
-                print("instance {}".format(instance.state['Name']))
                 continue
             instance_type = instance.instance_type  # type of the instance
             # Check if the instance has the "FedoraGroup" tag
@@ -281,11 +280,12 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
         print()
 
 
-volume_data = get_volumes_by_group()
-#volume_data = {}
-instances_data = get_instances_by_group_and_region()
-amis_data = get_amis_by_group()
-#amis_data = {}
+#volume_data = get_volumes_by_group()
+volume_data = {}
+#instances_data = get_instances_by_group_and_region()
+instances_data = {}
+#amis_data = get_amis_by_group()
+amis_data = {}
 snapshots_data = get_snapshots_by_group()
 #snapshots_data = {}
 print_volume_instance_data(volume_data, instances_data, amis_data, snapshots_data)
