@@ -158,6 +158,8 @@ def get_instances_by_group_and_region():
             if instance.state['Name'] in ['terminated', 'stopped']:
                 continue
             instance_type = instance.instance_type  # type of the instance
+            if instance.spot_instance_request_id:
+                instance_type = f"{instance_type}_spot"
             # Check if the instance has the "FedoraGroup" tag
             tags = instance.tags or []
             (fedora_group, service_name) = parse_tags(tags)
@@ -180,6 +182,21 @@ def get_instances_by_group_and_region():
     return instances_data
 
 
+def get_current_spot_pricing(region):
+    ec2_client = boto3.client('ec2')
+    ec2_resource = boto3.resource('ec2', region_name=region)
+    response = ec2_client.describe_spot_instance_requests()
+    spot_instance_requests = response['SpotInstanceRequests']
+
+    pricing = {}
+    for instance_request in spot_instance_requests:
+        if instance_request['State'] == 'active':
+            instance = ec2_resource.Instance(instance_request['InstanceId'])
+
+            pricing[instance_request['LaunchSpecification']['InstanceType']] = float(instance_request['SpotPrice'])
+
+    return pricing
+
 def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots_data):
     global REGIONS
     global GROUPS
@@ -188,12 +205,16 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
     ec2_offer = awspricing.offer('AmazonEC2')
     output_per_group = {}
     price_per_group = {}
+    spot_pricing = {}
     for group in GROUPS:
         #import pdb; pdb.set_trace()
         output = ""
         price_group_total = 0
         for region in REGIONS:
             service_output = ""
+            if region not in spot_pricing:
+                spot_pricing[region] = get_current_spot_pricing(region)
+                print(spot_pricing)
             for service in SERVICE:
                 price_total = 0
                 output_instance = []
@@ -212,11 +233,14 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
                         except KeyError:
                             pass
                         try:
-                            price = ec2_offer.ondemand_hourly(instance_type=instance_type,
+                            if instance_type.endswith("_spot"):
+                                price = spot_pricing[region][instance_type[:-5]]
+                            else:
+                                price = ec2_offer.ondemand_hourly(instance_type=instance_type,
                                                               region=region,
                                                               operating_system='Linux',
                                                              )
-                        except ValueError:
+                        except (ValueError, AttributeError):
                             price = 0
                         price = round(price * HOURS_PER_MONTH * count)
                         price_total += price
@@ -282,10 +306,10 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
 
 #volume_data = get_volumes_by_group()
 volume_data = {}
-#instances_data = get_instances_by_group_and_region()
-instances_data = {}
+instances_data = get_instances_by_group_and_region()
+#instances_data = {}
 #amis_data = get_amis_by_group()
 amis_data = {}
-snapshots_data = get_snapshots_by_group()
-#snapshots_data = {}
+#snapshots_data = get_snapshots_by_group()
+snapshots_data = {}
 print_volume_instance_data(volume_data, instances_data, amis_data, snapshots_data)
