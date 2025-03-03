@@ -21,8 +21,9 @@ RESERVED_INSTANCES = {
         "t3a.2xlarge": 1,
         "r5a.large": 1,
         "m5a.4xlarge": 1,
-        "c7i.xlarge": 3,
+        "c7i.xlarge": 23,
         "c7g.xlarge": 27,
+        "r7a.xlarge": 1,
 }}}
 # Initialize a session using Amazon EC2
 session = boto3.Session()
@@ -33,8 +34,8 @@ def get_all_regions():
     regions = [region['RegionName'] for region in client.describe_regions()['Regions']]
     return regions
 
-#REGIONS = get_all_regions()
-REGIONS = ['us-east-1']
+REGIONS = get_all_regions()
+#REGIONS = ['us-east-1']
 GROUPS = {NOT_TAGGED}
 SERVICE = {NOT_TAGGED}
 
@@ -272,7 +273,11 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
                     pass
                 output_snapshots = ""
                 if group in snapshots_data and region in snapshots_data[group] and service in snapshots_data[group][region]:
-                    output_snapshots = f"        Snapshots: {snapshots_data[group][region][service]['size']} GB in {snapshots_data[group][region][service]['count']} snapshots"
+                    price = ec2_offer.ebs_snapshot_monthly(region=region, archive=True)
+                    size = snapshots_data[group][region][service]['size']
+                    price = round(price * size)
+                    price_total += price
+                    output_snapshots = f"        Snapshots: {size} GB in {snapshots_data[group][region][service]['count']} snapshots - Price ${price}"
 
                 if output_instance or output_volume or output_amis or output_snapshots:
                     if service != NOT_TAGGED:
@@ -286,9 +291,8 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
                     if output_amis:
                         service_output += output_amis + "\n"
                     if output_snapshots:
-                        service_output + output_snapshots + "\n"
+                        service_output += output_snapshots + "\n"
                 price_group_total += price_total
-            #import pdb; pdb.set_trace()
             if service_output:
                 output += f"  Region: {region}\n"
                 output += service_output.rstrip() + "\n"
@@ -304,12 +308,12 @@ def print_volume_instance_data(volume_data, instances_data, amis_data, snapshots
         print()
 
 
-#volume_data = get_volumes_by_group()
-volume_data = {}
+volume_data = get_volumes_by_group()
+#volume_data = {}
 instances_data = get_instances_by_group_and_region()
 #instances_data = {}
-#amis_data = get_amis_by_group()
-amis_data = {}
-#snapshots_data = get_snapshots_by_group()
-snapshots_data = {}
+amis_data = get_amis_by_group()
+#amis_data = {}
+snapshots_data = get_snapshots_by_group()
+#snapshots_data = {}
 print_volume_instance_data(volume_data, instances_data, amis_data, snapshots_data)
