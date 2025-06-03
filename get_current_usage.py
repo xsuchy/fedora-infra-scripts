@@ -21,8 +21,8 @@ RESERVED_INSTANCES = {
         "t3a.2xlarge": 1,
         "r5a.large": 1,
         "m5a.4xlarge": 1,
-        "c7i.xlarge": 29,
-        "c7g.xlarge": 27,
+        "c7i.xlarge": 35,
+        "c7g.xlarge": 33,
         "r7a.xlarge": 1,
 }}}
 # Initialize a session using Amazon EC2
