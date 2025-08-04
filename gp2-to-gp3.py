@@ -28,6 +28,9 @@ for region in regions:
         print(f'Migrating volume {volume_id} in region {region} from gp2 to gp3...')
         
         # Modify the volume type to 'gp3'
-        ec2.modify_volume(VolumeId=volume_id, VolumeType='gp3')
-        print(f'Volume {volume_id} in region {region} migrated to gp3')
+        try:
+            ec2.modify_volume(VolumeId=volume_id, VolumeType='gp3')
+            print(f'Volume {volume_id} in region {region} migrated to gp3')
+        except e:
+            print(e)
     #sys.exit(1)    
