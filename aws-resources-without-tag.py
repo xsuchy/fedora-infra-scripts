@@ -81,7 +81,11 @@ for region in get_all_regions():
         for (id, name) in untagged_amis:
             print(f"  * {id} {name}")
     if untagged_snapshots:
-        print(f"Snapshots: (id, name, size)")
+        print(f"Snapshots: ")
+        total_snap_size = 0
         for (id, snapshot_name, snapshot_size) in untagged_snapshots:
-            print(f"  * {id} {snapshot_name} {snapshot_size} GB")
+#            print(f"  * {id} {snapshot_name} {snapshot_size} GB")
+            total_snap_size += snapshot_size
+        print(f"  * {total_snap_size} GB in {len(untagged_snapshots)} snapshots")
+
 
