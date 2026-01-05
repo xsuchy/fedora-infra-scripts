@@ -9,6 +9,7 @@ associated snapshot does not have this tag, then it will add the tag
 """
 
 import boto3
+import progressbar
 import sys
 
 def tag_snapshot_if_missing(ec2_client, snapshot_id, tag_key, tag_value):
@@ -56,7 +57,7 @@ def process_region(region):
         print(f"Error describing images in region {region}: {e}")
         return
 
-    for image in images_response.get('Images', []):
+    for image in progressbar.progressbar(images_response.get('Images', [])):
         image_id = image.get('ImageId')
         # Extract the FedoraGroup tag value from the AMI
         tag_value = None
@@ -68,7 +69,7 @@ def process_region(region):
         if not tag_value:
             continue  # Skip if somehow the tag is missing
 
-        print(f"Processing AMI {image_id} with FedoraGroup tag value: {tag_value}")
+        #print(f"Processing AMI {image_id} with FedoraGroup tag value: {tag_value}")
 
         # Iterate over the block device mappings to check for associated snapshots
         for mapping in image.get('BlockDeviceMappings', []):
