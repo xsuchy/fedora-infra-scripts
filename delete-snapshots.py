@@ -11,7 +11,7 @@ def delete_snapshots():
     regions = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
 
     # Define the cutoff date
-    cutoff_date = datetime.datetime(2025, 12, 1)
+    cutoff_date = datetime.datetime(2026, 1, 1)
 
     for region in regions:
         print(f"Checking region: {region}")
