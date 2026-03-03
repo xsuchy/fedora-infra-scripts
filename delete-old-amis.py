@@ -3,6 +3,7 @@
 
 import boto3
 from datetime import datetime, timezone
+from botocore.exceptions import ClientError
 
 def delete_old_amis(older_than_date):
     """
@@ -20,7 +21,12 @@ def delete_old_amis(older_than_date):
         ec2_region_client = boto3.client('ec2', region_name=region)
         
         # List all AMIs owned by the user
-        my_amis = ec2_region_client.describe_images(Owners=['self'])['Images']
+        try:
+            my_amis = ec2_region_client.describe_images(Owners=['self'])['Images']
+        except ClientError:
+            print("Skipping this region")
+            continue
+            
         
         # Filter AMIs created before the specified date
         old_amis = [ami for ami in my_amis if datetime.strptime(ami['CreationDate'], "%Y-%m-%dT%H:%M:%S.%f%z") < older_than_date]
@@ -43,5 +49,5 @@ def delete_old_amis(older_than_date):
 
 
 # Specify the cutoff date in YYYY, MM, DD format
-cutoff_date = datetime(2026, 1, 1, tzinfo=timezone.utc)
+cutoff_date = datetime(2026, 2, 1, tzinfo=timezone.utc)
 delete_old_amis(cutoff_date)

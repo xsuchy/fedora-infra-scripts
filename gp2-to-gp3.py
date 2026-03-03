@@ -2,6 +2,7 @@
 
 import boto3
 import sys
+from botocore.exceptions import ClientError
 
 # Create an EC2 client
 ec2 = boto3.client('ec2')
@@ -14,7 +15,11 @@ for region in regions:
     ec2 = boto3.client('ec2', region_name=region)
     
     # Get list of all volumes in the region
-    response = ec2.describe_volumes()
+    try:
+        response = ec2.describe_volumes()
+    except:
+        print("Skipping this region")
+        continue
 
     # Filter volumes that are of type 'gp2'
     gp2_volumes = [volume for volume in response['Volumes'] if volume['VolumeType'] == 'gp2']
@@ -31,6 +36,6 @@ for region in regions:
         try:
             ec2.modify_volume(VolumeId=volume_id, VolumeType='gp3')
             print(f'Volume {volume_id} in region {region} migrated to gp3')
-        except e:
+        except ClientError as e:
             print(e)
     #sys.exit(1)    

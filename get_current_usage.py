@@ -3,6 +3,7 @@ import awspricing
 import boto3
 import json
 import progressbar
+from botocore.exceptions import ClientError
 
 NOT_TAGGED = "Not tagged"
 FEDORA_GROUP = "FedoraGroup"
@@ -68,27 +69,31 @@ def get_volumes_by_group():
         ec2_resource = boto3.resource('ec2', region_name=region)
         volumes = ec2_resource.volumes.all()
 
-        for volume in volumes:
-            size = volume.size  # size of the volume in GiB
-            volume_type = volume.volume_type  # type of the volume
-            iops = volume.iops or 0
-            tags = volume.tags or []
-            
-            (fedora_group, service_name) = parse_tags(tags)
-            
-            if fedora_group not in volume_data:
-                volume_data[fedora_group] = {}
-            
-            if region not in volume_data[fedora_group]:
-                volume_data[fedora_group][region] = {}
-            if service_name not in volume_data[fedora_group][region]:
-                volume_data[fedora_group][region][service_name] = {}
+        try:
+            for volume in volumes:
+                size = volume.size  # size of the volume in GiB
+                volume_type = volume.volume_type  # type of the volume
+                iops = volume.iops or 0
+                tags = volume.tags or []
+                
+                (fedora_group, service_name) = parse_tags(tags)
+                
+                if fedora_group not in volume_data:
+                    volume_data[fedora_group] = {}
+                
+                if region not in volume_data[fedora_group]:
+                    volume_data[fedora_group][region] = {}
+                if service_name not in volume_data[fedora_group][region]:
+                    volume_data[fedora_group][region][service_name] = {}
 
-            if volume_type not in volume_data[fedora_group][region][service_name]:
-                volume_data[fedora_group][region][service_name][volume_type] = [0, 0]
-            
-            volume_data[fedora_group][region][service_name][volume_type][0] += size
-            volume_data[fedora_group][region][service_name][volume_type][1] += iops
+                if volume_type not in volume_data[fedora_group][region][service_name]:
+                    volume_data[fedora_group][region][service_name][volume_type] = [0, 0]
+                
+                volume_data[fedora_group][region][service_name][volume_type][0] += size
+                volume_data[fedora_group][region][service_name][volume_type][1] += iops
+        except ClientError:
+            print("Skipping this region")
+            continue        
     
     return volume_data
 
@@ -101,7 +106,12 @@ def get_amis_by_group():
     print("Gathering AMIs:")
     for region in progressbar.progressbar(REGIONS):
         ec2 = boto3.client('ec2', region_name=region)
-        amis = ec2.describe_images(Owners=['self'])['Images']
+        try:
+            amis = ec2.describe_images(Owners=['self'])['Images']
+        except ClientError:
+            print("Skipping this region")
+            REGIONS.remove(region)
+            continue            
 
         for ami in amis:
             (fedora_group, service_name) = parse_tags(ami.get('Tags', [])) 

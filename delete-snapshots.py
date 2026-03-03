@@ -11,14 +11,19 @@ def delete_snapshots():
     regions = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
 
     # Define the cutoff date
-    cutoff_date = datetime.datetime(2026, 1, 1)
+    cutoff_date = datetime.datetime(2026, 2, 1)
 
     for region in regions:
         print(f"Checking region: {region}")
         ec2 = boto3.client('ec2', region_name=region)
 
         # Get all snapshots
-        snapshots = ec2.describe_snapshots(OwnerIds=['self'])['Snapshots']
+        try:
+            snapshots = ec2.describe_snapshots(OwnerIds=['self'])['Snapshots']
+        except ClientError:
+            print("Skipping this region")
+            continue
+
 
         for snapshot in snapshots:
             creation_date = datetime.datetime.strptime(snapshot['StartTime'].strftime("%Y-%m-%d"), "%Y-%m-%d")

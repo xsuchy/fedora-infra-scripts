@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import boto3
 from datetime import datetime, timedelta
+from botocore.exceptions import ClientError
 
 TAG_NAME="FedoraGroup"
 
@@ -67,7 +68,11 @@ def get_untagged_resources(region):
 
 for region in get_all_regions():
     print("\nRegion: {}".format(region))
-    (untagged_instances, untagged_volumes, untagged_amis, untagged_snapshots) = get_untagged_resources(region)
+    try:
+        (untagged_instances, untagged_volumes, untagged_amis, untagged_snapshots) = get_untagged_resources(region)
+    except ClientError:
+        print("Skipping this region")
+        continue
     if untagged_instances:
         print("Instances: (name, id, owner)")
         for (id, name, owner) in untagged_instances:
