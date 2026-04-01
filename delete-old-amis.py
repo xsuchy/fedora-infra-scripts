@@ -49,5 +49,5 @@ def delete_old_amis(older_than_date):
 
 
 # Specify the cutoff date in YYYY, MM, DD format
-cutoff_date = datetime(2026, 2, 1, tzinfo=timezone.utc)
+cutoff_date = datetime(2026, 3, 1, tzinfo=timezone.utc)
 delete_old_amis(cutoff_date)
