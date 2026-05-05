@@ -89,6 +89,7 @@ except Exception as e:
     sys.exit(1)
 
 regions = [region['RegionName'] for region in regions_response['Regions']]
+regions.remove('me-south-1')
 
 for region in regions:
     process_region(region)

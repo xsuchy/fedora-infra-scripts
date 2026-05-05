@@ -15,6 +15,7 @@ def delete_old_amis(older_than_date):
     # Get a list of all regions
     ec2 = boto3.client('ec2', region_name='us-east-1')
     regions = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
+    regions.remove('me-south-1')
     
     for region in regions:
         print(f"Checking AMIs in region: {region}")
@@ -49,5 +50,5 @@ def delete_old_amis(older_than_date):
 
 
 # Specify the cutoff date in YYYY, MM, DD format
-cutoff_date = datetime(2026, 3, 1, tzinfo=timezone.utc)
+cutoff_date = datetime(2026, 4, 1, tzinfo=timezone.utc)
 delete_old_amis(cutoff_date)

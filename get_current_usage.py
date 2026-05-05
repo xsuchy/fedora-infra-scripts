@@ -36,6 +36,8 @@ def get_all_regions():
     return regions
 
 REGIONS = get_all_regions()
+REGIONS.remove('me-south-1')
+print(REGIONS)
 #REGIONS = ['us-east-1']
 GROUPS = {NOT_TAGGED}
 SERVICE = {NOT_TAGGED}
@@ -91,7 +93,7 @@ def get_volumes_by_group():
                 
                 volume_data[fedora_group][region][service_name][volume_type][0] += size
                 volume_data[fedora_group][region][service_name][volume_type][1] += iops
-        except ClientError:
+        except:
             print("Skipping this region")
             continue        
     
@@ -108,7 +110,7 @@ def get_amis_by_group():
         ec2 = boto3.client('ec2', region_name=region)
         try:
             amis = ec2.describe_images(Owners=['self'])['Images']
-        except ClientError:
+        except:
             print("Skipping this region")
             REGIONS.remove(region)
             continue            

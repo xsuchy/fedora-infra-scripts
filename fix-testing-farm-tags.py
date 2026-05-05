@@ -53,6 +53,7 @@ def get_all_regions(ec2_client):
             region["RegionName"]
             for region in ec2_client.describe_regions()["Regions"]
         ]
+        regions.remove('me-south-1')
         return regions
     except ClientError as e:
         print(f"Error getting regions: {e}")

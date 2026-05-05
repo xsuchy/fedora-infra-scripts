@@ -9,9 +9,10 @@ def delete_snapshots():
     # Get a list of all regions
     ec2 = boto3.client('ec2')
     regions = [region['RegionName'] for region in ec2.describe_regions()['Regions']]
+    regions.remove('me-south-1')
 
     # Define the cutoff date
-    cutoff_date = datetime.datetime(2026, 3, 1)
+    cutoff_date = datetime.datetime(2026, 4, 1)
 
     for region in regions:
         print(f"Checking region: {region}")
