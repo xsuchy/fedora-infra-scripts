@@ -12,7 +12,7 @@ def delete_snapshots():
     regions.remove('me-south-1')
 
     # Define the cutoff date
-    cutoff_date = datetime.datetime(2026, 4, 1)
+    cutoff_date = datetime.datetime(2026, 5, 1)
 
     for region in regions:
         print(f"Checking region: {region}")
