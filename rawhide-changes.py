@@ -1,10 +1,9 @@
 #!/usr/bin/python
+import argparse
 import glob
 import os
 import re
-import base64
 import sys
-import email
 from email import policy
 from email.parser import BytesParser
 
@@ -53,40 +52,45 @@ def parse_email_content(content):
     return RESULT
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python script.py YYYYMM")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Extract added packages from Rawhide compose emails.")
+    parser.add_argument("yyyymm", help="Month in YYYYMM format (e.g., 202602)")
+    parser.add_argument("--markdown", action="store_true", help="Format output as a markdown table")
+    args = parser.parse_args()
 
-    yyyymm = sys.argv[1]
+    yyyymm = args.yyyymm
 
     if len(yyyymm) != 6 or not yyyymm.isdigit():
         print("Error: Parameter must be in YYYYMM format (e.g., 202602)")
         sys.exit(1)
-   
-    # 2. Format the search pattern
-    # Transforms '202310' into '*2023-10*'
+
     year = yyyymm[:4]
     month = yyyymm[4:]
     pattern = f"*{year}-{month}*"
-   
-    # 3. Find and process files
+
     files = glob.glob("/home/msuchy/Downloads/composes/"+pattern)
-   
+
     if not files:
         print("No matching files found.")
         return
-   
+
     RESULT = {}
     for file_path in files:
         if os.path.isfile(file_path):
-            #print(f"Processing: {file_path}")
             try:
                 content = extract_plain_text(file_path)
                 RESULT.update(parse_email_content(content))
             except Exception as e:
                 print(f"Could not read file {file_path}: {e}")
-    for i in sorted(RESULT.keys()):
-        print(RESULT[i])
+
+    if args.markdown:
+        print("| Package | Summary |")
+        print("|---------|---------|")
+        for pkg in sorted(RESULT.keys()):
+            summary = RESULT[pkg].strip().removeprefix(pkg).lstrip(" -")
+            print(f"| {pkg} | {summary} |")
+    else:
+        for i in sorted(RESULT.keys()):
+            print(RESULT[i])
 
 if __name__ == '__main__':
     main()
