@@ -14,15 +14,15 @@ RESERVED_INSTANCES = {
     # see https://docs.google.com/spreadsheets/d/1-5EyRjMSC2_LgHOpdG6_HwBjcSIY36rhYOLVYBcwAKY/edit?gid=0#gid=0
     'copr': {
       'us-east-1': {
-        "t3a.medium": 2,
-        "t3a.xlarge": 1,
-        "t3a.small": 1,
+        "t3a.medium": 1,
+        "t3a.xlarge": 0,
+        "t3a.small": 0,
         "c7a.4xlarge": 1,
         "t3a.2xlarge": 1,
         "r5a.large": 1,
         "m5a.4xlarge": 1,
         "c7i.xlarge": 71,
-        "c7g.xlarge": 57,
+        "c7g.xlarge": 56,
         "r7a.xlarge": 1,
         "c7a.8xlarge": 1,
 }}}
